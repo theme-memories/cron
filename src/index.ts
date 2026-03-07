@@ -13,6 +13,10 @@ export default {
 				try {
 					const apiKey = await env.OPENWEATHERMAP_API_KEY.get();
 					const heartbeatUrl = await env.HEARTBEAT_URL.get();
+					if (!apiKey || !heartbeatUrl) {
+						console.error('A required secret is missing.');
+						return;
+					}
 					const weatherResponse = await fetch(
 						`https://api.openweathermap.org/data/2.5/weather?lat=${env.LAT}&lon=${env.LON}&appid=${apiKey}&units=metric&lang=${env.LANG}`,
 					);
@@ -20,7 +24,10 @@ export default {
 						console.error(`Failed to fetch weather data: ${weatherResponse.status} ${await weatherResponse.text()}`);
 					} else {
 						const weatherData = await weatherResponse.json();
-						await env.WEATHER_CACHE.put('latest-weather', JSON.stringify(weatherData), {
+						await env.WEATHER_CACHE.put('weather', JSON.stringify(weatherData, null, '\t'), {
+							httpMetadata: {
+								contentType: 'application/json',
+							},
 							customMetadata: {
 								lastUpdated: new Date().toISOString(),
 							},

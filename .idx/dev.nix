@@ -16,5 +16,9 @@
       "IBM.output-colorizer"
       "EditorConfig.EditorConfig"
     ];
+    workspace = {
+      onCreate = { default.openFiles = [ "src/index.ts" ]; };
+      onStart = { default.openFiles = [ "src/index.ts" ]; };
+    };
   };
 }

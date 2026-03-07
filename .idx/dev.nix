@@ -6,7 +6,6 @@
     pkgs.gnupg
     pkgs.openssh
   ];
-  env = { };
   idx = {
     extensions = [
       "mhutchie.git-graph"
@@ -17,12 +16,5 @@
       "IBM.output-colorizer"
       "EditorConfig.EditorConfig"
     ];
-    previews = {
-      enable = false;
-    };
-    workspace = {
-      onCreate = { };
-      onStart = { };
-    };
   };
 }

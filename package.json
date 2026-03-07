@@ -1,0 +1,32 @@
+{
+	"name": "cron",
+	"version": "26.3.7",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev --test-scheduled",
+		"start": "wrangler dev --test-scheduled",
+		"cf-typegen": "wrangler types",
+		"prepare": "husky"
+	},
+	"lint-staged": {
+		"*.{js,mjs,cjs,ts,mts,cts}": [
+			"eslint",
+			"prettier --write --ignore-unknown"
+		],
+		"!(*.{js,mjs,cjs,ts,mts,cts})": "prettier --write --ignore-unknown"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@types/node": "^25.3.5",
+		"eslint": "^10.0.3",
+		"eslint-config-prettier": "^10.1.8",
+		"globals": "^17.4.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.3.2",
+		"prettier": "^3.8.1",
+		"typescript": "^5.5.2",
+		"typescript-eslint": "^8.56.1",
+		"wrangler": "^4.71.0"
+	}
+}

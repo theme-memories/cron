@@ -1,0 +1,11 @@
+# Ignore artifacts:
+build
+coverage
+
+# custom
+.idx/airules.md
+AGENTS.md
+LICENSE
+pnpm-lock.yaml
+pnpm-workspace.yaml
+worker-configuration.d.ts

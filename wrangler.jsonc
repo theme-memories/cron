@@ -39,9 +39,4 @@
 			"bucket_name": "object",
 		},
 	],
-	"vars": {
-		"LAT": "43.3302",
-		"LON": "145.5834",
-		"LANG": "ja",
-	},
 }

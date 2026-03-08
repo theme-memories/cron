@@ -1,14 +1,6 @@
 import { ApiWeatherData, TransformedWeatherData } from './types';
 
 export default {
-	async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		const url = new URL(req.url);
-		if (url.pathname === '/__scheduled') {
-			await this.scheduled({ cron: '* * * * *' } as ScheduledEvent, env, ctx);
-			return new Response('Scheduled event triggered manually.');
-		}
-		return new Response('This is a scheduled worker. Use /__scheduled to trigger manually.');
-	},
 	async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
 		ctx.waitUntil(
 			(async () => {
@@ -20,7 +12,7 @@ export default {
 						return;
 					}
 					const weatherResponse = await fetch(
-						`https://api.openweathermap.org/data/2.5/weather?lat=${env.LAT}&lon=${env.LON}&appid=${apiKey}&units=metric&lang=${env.LANG}`,
+						`https://api.openweathermap.org/data/2.5/weather?lat=43.3302&lon=145.5834&appid=${apiKey}&units=metric&lang=ja`,
 					);
 					if (!weatherResponse.ok) {
 						console.error(`Failed to fetch weather data: ${weatherResponse.status} ${await weatherResponse.text()}`);
@@ -65,9 +57,6 @@ export default {
 						await env.WEATHER_CACHE.put('weather', JSON.stringify(weatherData), {
 							httpMetadata: {
 								contentType: 'application/json',
-							},
-							customMetadata: {
-								lastUpdated: new Date().toISOString(),
 							},
 						});
 						console.log(`Successfully fetched and stored weather data.`);

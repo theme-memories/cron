@@ -1,3 +1,5 @@
+import { ApiWeatherData, TransformedWeatherData } from './types';
+
 export default {
 	async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(req.url);
@@ -23,8 +25,44 @@ export default {
 					if (!weatherResponse.ok) {
 						console.error(`Failed to fetch weather data: ${weatherResponse.status} ${await weatherResponse.text()}`);
 					} else {
-						const weatherData = await weatherResponse.json();
-						await env.WEATHER_CACHE.put('weather', JSON.stringify(weatherData, null, '\t'), {
+						const data: ApiWeatherData = await weatherResponse.json();
+						const weatherData: TransformedWeatherData = {
+							weather: {
+								description: data.weather[0].description,
+								icon: data.weather[0].icon,
+							},
+							temperature: {
+								current: data.main.temp,
+								feelsLike: data.main.feels_like,
+								min: data.main.temp_min,
+								max: data.main.temp_max,
+							},
+							atmospheric: {
+								pressure: data.main.pressure,
+								humidity: data.main.humidity,
+								seaLevel: data.main.sea_level,
+								groundLevel: data.main.grnd_level,
+								visibility: data.visibility,
+							},
+							wind: {
+								speed: data.wind.speed,
+								direction: data.wind.deg,
+								gust: data.wind.gust,
+							},
+							clouds: data.clouds?.all || 0,
+							sun: {
+								sunrise: data.sys.sunrise,
+								sunset: data.sys.sunset,
+							},
+							lastUpdated: data.dt,
+						};
+						if (data.rain?.['1h']) {
+							weatherData.rain = data.rain['1h'];
+						}
+						if (data.snow?.['1h']) {
+							weatherData.snow = data.snow['1h'];
+						}
+						await env.WEATHER_CACHE.put('weather', JSON.stringify(weatherData), {
 							httpMetadata: {
 								contentType: 'application/json',
 							},

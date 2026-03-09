@@ -57,6 +57,7 @@ export default {
 						await env.WEATHER_CACHE.put('weather', JSON.stringify(weatherData), {
 							httpMetadata: {
 								contentType: 'application/json',
+								cacheControl: 'public, max-age=14400, Cloudflare-CDN-Cache-Control=600',
 							},
 						});
 						console.log(`Successfully fetched and stored weather data.`);

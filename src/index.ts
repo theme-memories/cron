@@ -19,9 +19,8 @@ async function runWeatherJob(
     );
 
     if (!weatherResponse.ok) {
-      const errorText = await weatherResponse.text();
       throw new Error(
-        `Failed to fetch weather data: ${weatherResponse.status} ${errorText}`,
+        `Failed to fetch weather data: ${weatherResponse.status}`,
       );
     }
 

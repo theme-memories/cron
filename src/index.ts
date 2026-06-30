@@ -82,7 +82,7 @@ async function runWeatherJob(env: CloudflareBindings): Promise<void> {
     atmospheric: {
       pressure: data.pressure,
       humidity: data.humidity,
-      visibility: data.visibility,
+      visibility: data.visibility ?? 0,
       clouds: data.clouds,
       uvi: data.uvi,
     },

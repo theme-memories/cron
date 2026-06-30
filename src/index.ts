@@ -63,71 +63,97 @@ interface FilteredWeatherData {
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 
 async function runWeatherJob(env: CloudflareBindings): Promise<void> {
-  const apiKey = await env.OPENWEATHERMAP_API_KEY.get();
-  const weatherResponse = await fetch(
-    `https://api.openweathermap.org/data/4.0/onecall/current?lat=43.3302&lon=145.5834&appid=${apiKey}&units=metric&lang=ja`,
-  );
-  const wetherData: WeatherResponseData = await weatherResponse.json();
-  const data = wetherData.data[0];
-  const filteredData: FilteredWeatherData = {
-    weather: data.weather.map((w) => ({
-      description: w.description,
-      icon: w.icon,
-    })),
-    temperature: {
-      current: data.temp,
-      feelsLike: data.feels_like,
-      dewPoint: data.dew_point,
-    },
-    atmospheric: {
-      pressure: data.pressure,
-      humidity: data.humidity,
-      visibility: data.visibility ?? 0,
-      clouds: data.clouds,
-      uvi: data.uvi,
-    },
-    wind: {
-      speed: data.wind_speed,
-      deg: data.wind_deg,
-      gust: data.wind_gust,
-    },
-    sun: {
-      sunrise: data.sunrise,
-      sunset: data.sunset,
-    },
-    lastUpdated: data.dt,
-    rain: data.rain?.["1h"] ?? 0,
-    snow: data.snow?.["1h"] ?? 0,
-    alerts: [],
-  };
+  try {
+    const apiKey = await env.OPENWEATHERMAP_API_KEY.get();
+    const weatherResponse = await fetch(
+      `https://api.openweathermap.org/data/4.0/onecall/current?lat=43.3302&lon=145.5834&appid=${apiKey}&units=metric&lang=ja`,
+    );
 
-  if (data.alerts && data.alerts.length > 0) {
-    for (const alert of data.alerts) {
-      const alertResponse = await fetch(
-        `https://api.openweathermap.org/data/4.0/onecall/alert/${alert}?appid=${apiKey}`,
+    if (!weatherResponse.ok) {
+      throw new Error(
+        `Weather API response error: ${weatherResponse.status} ${weatherResponse.statusText}`,
       );
-      const alertData: AlertResponseData = await alertResponse.json();
-      const filteredDescriptions = alertData.description
-        .filter((d) => d.description !== "")
-        .map((d) => ({
-          description: d.description,
-        }));
-
-      if (filteredDescriptions.length > 0) {
-        filteredData.alerts.push({
-          start: alertData.start,
-          end: alertData.end,
-          description: filteredDescriptions,
-        });
-      }
     }
-  }
 
-  await env.R2_BUCKET.put("weather", JSON.stringify(filteredData), {
-    httpMetadata: {
-      contentType: "application/json",
-    },
-  });
+    const weatherData: WeatherResponseData = await weatherResponse.json();
+    const data = weatherData.data[0];
+    const filteredData: FilteredWeatherData = {
+      weather: data.weather.map((w) => ({
+        description: w.description,
+        icon: w.icon,
+      })),
+      temperature: {
+        current: data.temp,
+        feelsLike: data.feels_like,
+        dewPoint: data.dew_point,
+      },
+      atmospheric: {
+        pressure: data.pressure,
+        humidity: data.humidity,
+        visibility: data.visibility ?? 0,
+        clouds: data.clouds,
+        uvi: data.uvi,
+      },
+      wind: {
+        speed: data.wind_speed,
+        deg: data.wind_deg,
+        gust: data.wind_gust,
+      },
+      sun: {
+        sunrise: data.sunrise,
+        sunset: data.sunset,
+      },
+      lastUpdated: data.dt,
+      rain: data.rain?.["1h"] ?? 0,
+      snow: data.snow?.["1h"] ?? 0,
+      alerts: [],
+    };
+
+    if (data.alerts && data.alerts.length > 0) {
+      const alertPromises = data.alerts.map(async (alert) => {
+        try {
+          const alertResponse = await fetch(
+            `https://api.openweathermap.org/data/4.0/onecall/alert/${alert}?appid=${apiKey}`,
+          );
+
+          if (!alertResponse.ok) return null;
+
+          const alertData: AlertResponseData = await alertResponse.json();
+          const filteredDescriptions = alertData.description
+            .filter((d) => d.description !== "")
+            .map((d) => ({
+              description: d.description,
+            }));
+
+          return filteredDescriptions.length > 0
+            ? {
+                start: alertData.start,
+                end: alertData.end,
+                description: filteredDescriptions,
+              }
+            : null;
+        } catch (e) {
+          console.error(`Error fetching alert ${alert}:`, e);
+
+          return null;
+        }
+      });
+
+      const alertsResults = await Promise.all(alertPromises);
+
+      filteredData.alerts = alertsResults.filter(
+        (a): a is FilteredAlertData => a !== null,
+      );
+    }
+
+    await env.R2_BUCKET.put("weather", JSON.stringify(filteredData), {
+      httpMetadata: {
+        contentType: "application/json",
+      },
+    });
+  } catch (error) {
+    console.error("Weather job failed:", error);
+  }
 }
 
 export default {

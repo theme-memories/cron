@@ -107,16 +107,19 @@ async function runWeatherJob(env: CloudflareBindings): Promise<void> {
         `https://api.openweathermap.org/data/4.0/onecall/alert/${alert}?appid=${apiKey}`,
       );
       const alertData: AlertResponseData = await alertResponse.json();
+      const filteredDescriptions = alertData.description
+        .filter((d) => d.description !== "")
+        .map((d) => ({
+          description: d.description,
+        }));
 
-      filteredData.alerts.push({
-        start: alertData.start,
-        end: alertData.end,
-        description: alertData.description
-          .filter((d) => d.description !== "")
-          .map((d) => ({
-            description: d.description,
-          })),
-      });
+      if (filteredDescriptions.length > 0) {
+        filteredData.alerts.push({
+          start: alertData.start,
+          end: alertData.end,
+          description: filteredDescriptions,
+        });
+      }
     }
   }
 

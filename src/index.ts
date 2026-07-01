@@ -1,80 +1,42 @@
 import { Hono } from "hono";
-
-interface WeatherResponseData {
-  data: {
-    dt: number;
-    sunrise: number;
-    sunset: number;
-    temp: number;
-    feels_like: number;
-    pressure: number;
-    humidity: number;
-    dew_point: number;
-    uvi: number;
-    clouds: number;
-    visibility: number;
-    wind_speed: number;
-    wind_deg: number;
-    wind_gust: number;
-    rain?: {
-      "1h": number;
-    };
-    snow?: {
-      "1h": number;
-    };
-    weather: {
-      description: string;
-      icon: string;
-    }[];
-    alerts?: string[];
-  }[];
-}
-
-interface AlertResponseData {
-  start: number;
-  end: number;
-  description: { description: string }[];
-}
-
-interface FilteredAlertData {
-  start: number;
-  end: number;
-  description: { description: string }[];
-}
-
-interface FilteredWeatherData {
-  weather: { description: string; icon: string }[];
-  temperature: { current: number; feelsLike: number; dewPoint: number };
-  atmospheric: {
-    pressure: number;
-    humidity: number;
-    visibility: number;
-    clouds: number;
-    uvi: number;
-  };
-  wind: { speed: number; deg: number; gust: number };
-  sun: { sunrise: number; sunset: number };
-  lastUpdated: number;
-  rain: number;
-  snow: number;
-  alerts: FilteredAlertData[];
-}
+import type {
+  WeatherResponseData,
+  AlertResponseData,
+  FilteredAlertData,
+  FilteredWeatherData,
+} from "./types";
+import {
+  WEATHER_LAT,
+  WEATHER_LON,
+  WEATHER_UNITS,
+  WEATHER_LANG,
+} from "./constants";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 
 async function runWeatherJob(env: CloudflareBindings): Promise<void> {
   try {
+    // Setup
+    const OPENWEATHER_BASE_URL =
+      "https://api.openweathermap.org/data/4.0/onecall";
     const apiKey = await env.OPENWEATHERMAP_API_KEY.get();
-    const weatherResponse = await fetch(
-      `https://api.openweathermap.org/data/4.0/onecall/current?lat=43.3302&lon=145.5834&appid=${apiKey}&units=metric&lang=ja`,
-    );
+    const params = new URLSearchParams({
+      lat: WEATHER_LAT,
+      lon: WEATHER_LON,
+      units: WEATHER_UNITS,
+      lang: WEATHER_LANG,
+      appid: apiKey,
+    });
 
+    // Fetch Weather
+    const weatherResponse = await fetch(
+      `${OPENWEATHER_BASE_URL}/current?${params}`,
+    );
     if (!weatherResponse.ok) {
-      throw new Error(
-        `Weather API response error: ${weatherResponse.status} ${weatherResponse.statusText}`,
-      );
+      throw new Error(`Weather API Error: ${weatherResponse.status}`);
     }
 
+    // Process Data
     const weatherData: WeatherResponseData = await weatherResponse.json();
     const data = weatherData.data[0];
     const filteredData: FilteredWeatherData = {
@@ -109,22 +71,21 @@ async function runWeatherJob(env: CloudflareBindings): Promise<void> {
       alerts: [],
     };
 
+    // Handle Alerts
     if (data.alerts && data.alerts.length > 0) {
       const alertPromises = data.alerts.map(async (alert) => {
         try {
+          const alertParams = new URLSearchParams({ appid: apiKey });
           const alertResponse = await fetch(
-            `https://api.openweathermap.org/data/4.0/onecall/alert/${alert}?appid=${apiKey}`,
+            `${OPENWEATHER_BASE_URL}/alert/${alert}?${alertParams}`,
           );
-
           if (!alertResponse.ok) return null;
-
           const alertData: AlertResponseData = await alertResponse.json();
           const filteredDescriptions = alertData.description
             .filter((d) => d.description !== "")
             .map((d) => ({
               description: d.description,
             }));
-
           return filteredDescriptions.length > 0
             ? {
                 start: alertData.start,
@@ -132,27 +93,27 @@ async function runWeatherJob(env: CloudflareBindings): Promise<void> {
                 description: filteredDescriptions,
               }
             : null;
-        } catch (e) {
-          console.error(`Error fetching alert ${alert}:`, e);
-
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (error) {
+          console.error(`Alert ${alert} failed`);
           return null;
         }
       });
-
       const alertsResults = await Promise.all(alertPromises);
-
       filteredData.alerts = alertsResults.filter(
         (a): a is FilteredAlertData => a !== null,
       );
     }
 
+    // Store to R2
     await env.R2_BUCKET.put("weather", JSON.stringify(filteredData), {
       httpMetadata: {
         contentType: "application/json",
       },
     });
+    console.log("Weather updated");
   } catch (error) {
-    console.error("Weather job failed:", error);
+    console.error(`Job failed: ${error}`);
   }
 }
 

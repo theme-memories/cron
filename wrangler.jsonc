@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "amia-cron",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-08",
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": {
+    "crons": ["33 * * * *"],
+  },
+  "observability": {
+    "traces": {
+      "enabled": true,
+      "destinations": ["grafana-traces"],
+      "head_sampling_rate": 1,
+      "persist": true,
+    },
+    "logs": {
+      "enabled": true,
+      "destinations": ["grafana-logs"],
+      "head_sampling_rate": 1,
+      "persist": true,
+    },
+  },
+  "placement": {
+    "mode": "smart",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "theme-memories",
+      "database_id": "44aab7c3-51c6-46f0-96e1-2c711f842216",
+    },
+  ],
+}

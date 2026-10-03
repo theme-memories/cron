@@ -37,12 +37,14 @@ There is no `lint` or `typecheck` script. ESLint and Prettier run through
   known schedules and returns without throwing.
 - Every expression in `wrangler.jsonc` (`triggers.crons`) must have a matching key in
   `cronJobs`; `test/crons.test.ts` asserts the two stay in sync.
-- `src/crons/weather.ts` (`syncWeather`, `8/10 * * * *`): reads the OpenWeatherMap
-  secret, fetches current weather (One Call 4.0) and alerts (One Call 3.0), then writes
-  `weather.json` to the `WEATHER_BUCKET` R2 bucket with a `Cache-Control` policy.
-  Alerts failures are tolerated (the snapshot is published with an empty `alerts`
-  array); a current-weather failure keeps the previous snapshot.
-- `src/crons/unlock.ts` (`clearExpiredUnlocks`, `56 * * * *`): deletes expired rows from
+- `src/crons/weather.ts` (`syncWeather`, `2/10 * * * *`): reads the OpenWeatherMap
+  secret, fetches current weather (Current Weather 2.5) through
+  `src/openweathermap/current.ts`, then writes `weather.json` to the `WEATHER_BUCKET`
+  R2 bucket with a `Cache-Control` policy. A fetch failure throws, so the previous
+  snapshot is kept. The payload is a flat object — the `main`, `wind`, and `clouds`
+  envelopes and `rain`/`snow` `1h` buckets are lifted into top-level keys, and
+  metadata such as `coord`, `base`, `name`, and `id` is dropped.
+- `src/crons/unlock.ts` (`clearExpiredUnlocks`, `4 * * * *`): deletes expired rows from
   the D1 `unlock` table through the `DB` binding, comparing against epoch seconds.
 - `src/openweathermap/request.ts` is the shared fetch helper: a 10s timeout via
   `AbortSignal.timeout` and an error carrying the response body on non-2xx.

@@ -22,7 +22,7 @@ afterEach(() => {
 
 describe("cronJobs", () => {
   it("has at least one handler for every configured schedule", () => {
-    expect(Object.keys(cronJobs)).toEqual(["33 * * * *"]);
+    expect(Object.keys(cronJobs)).toEqual(["2/10 * * * *", "4 * * * *"]);
 
     for (const jobs of Object.values(cronJobs)) {
       expect(jobs.length).toBeGreaterThan(0);
@@ -35,7 +35,7 @@ describe("runScheduled", () => {
     const { db, prepare } = createFakeDb();
 
     await runScheduled(
-      controllerFor("33 * * * *"),
+      controllerFor("4 * * * *"),
       { DB: db } as unknown as CloudflareBindings,
       context,
     );
@@ -71,7 +71,7 @@ describe("runScheduled", () => {
 
     await expect(
       runScheduled(
-        controllerFor("33 * * * *"),
+        controllerFor("4 * * * *"),
         { DB: db } as unknown as CloudflareBindings,
         context,
       ),

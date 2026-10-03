@@ -1,4 +1,5 @@
 import { clearExpiredUnlocks } from "./unlock";
+import { syncWeather } from "./weather";
 
 type CronJob = (
   env: CloudflareBindings,
@@ -6,7 +7,8 @@ type CronJob = (
 ) => Promise<void>;
 
 export const cronJobs: Record<string, CronJob[]> = {
-  "33 * * * *": [clearExpiredUnlocks],
+  "2/10 * * * *": [syncWeather],
+  "4 * * * *": [clearExpiredUnlocks],
 };
 
 export async function runScheduled(
